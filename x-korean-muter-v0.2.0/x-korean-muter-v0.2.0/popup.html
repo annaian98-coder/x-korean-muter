@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X 뮤트</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>X 뮤트</h1>
+      <p>단어별로 매칭 방식과 대상을 설정합니다.</p>
+    </div>
+  </header>
+
+  <section class="panel add-panel">
+    <input id="ruleValue" type="text" placeholder="뮤트할 단어 또는 정규식">
+    <div class="row">
+      <select id="ruleMode" title="매칭 방식">
+        <option value="aggressive">우회 표기 포함</option>
+        <option value="contains">부분 포함</option>
+        <option value="exact">정확히 일치</option>
+        <option value="regex">정규식</option>
+      </select>
+      <select id="ruleTarget" title="대상">
+        <option value="text">글 내용</option>
+        <option value="username">사용자명</option>
+        <option value="all">내용 + 사용자명</option>
+      </select>
+      <button id="addRule" class="primary">추가</button>
+    </div>
+    <p class="hint">‘우회 표기 포함’은 공백·기호·제로폭 문자를 제거한 뒤 비교합니다.</p>
+  </section>
+
+  <section class="panel">
+    <div class="section-title">
+      <strong>뮤트 규칙</strong>
+      <span id="ruleCount"></span>
+    </div>
+    <div id="ruleList" class="rule-list"></div>
+    <div id="emptyState" class="empty">등록된 규칙이 없습니다.</div>
+  </section>
+
+  <section class="panel settings">
+    <strong>표시 방식</strong>
+    <label><input type="radio" name="hideMode" value="collapse"> 접어서 ‘게시물 보기’ 표시</label>
+    <label><input type="radio" name="hideMode" value="hidden"> 완전히 숨기기</label>
+
+    <strong class="spaced">검사 범위</strong>
+    <label><input id="surfaceTweets" type="checkbox"> 게시물 / 인용 게시물</label>
+    <label><input id="surfaceUsernames" type="checkbox"> 게시물 작성자명</label>
+    <label><input id="surfaceProfiles" type="checkbox"> 사용자 목록 / 프로필</label>
+    <label><input id="surfaceTrends" type="checkbox"> 트렌드</label>
+    <label><input id="surfaceSearch" type="checkbox"> 검색 결과</label>
+  </section>
+
+  <section class="panel actions">
+    <button id="exportBtn">설정 내보내기</button>
+    <button id="importBtn">설정 가져오기</button>
+    <input id="importFile" type="file" accept="application/json,.json" hidden>
+  </section>
+
+  <div id="status" aria-live="polite"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
