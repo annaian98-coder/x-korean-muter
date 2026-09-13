@@ -92,6 +92,38 @@ function getText(el) {
   return (el?.innerText || el?.textContent || '').trim();
 }
 
+function hashString(value) {
+  const source = String(value ?? '');
+  let hash = 2166136261;
+
+  for (let i = 0; i < source.length; i += 1) {
+    hash ^= source.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return (hash >>> 0).toString(36);
+}
+
+function revealKey(rule, target, source) {
+  const ruleKey = String(rule?.id || rule?.value || '');
+  return `${target}:${hashString(`${ruleKey}\n${normalizeBasic(source)}`)}`;
+}
+
+function isManuallyRevealed(el, key) {
+  const savedKey = el?.getAttribute('data-xkm-revealed-key');
+
+  if (!savedKey) return false;
+
+  if (savedKey === key) {
+    clearMute(el);
+    return true;
+  }
+
+  // 게시물 내용이나 매칭 규칙이 바뀌었다면 이전의 수동 펼침 상태를 폐기합니다.
+  el.removeAttribute('data-xkm-revealed-key');
+  return false;
+}
+
 function getTweetText(tweet) {
   // 인용 게시물도 동일 article 내부의 tweetText 노드로 들어오는 경우 함께 합산합니다.
   return Array.from(tweet.querySelectorAll(CONFIG.selectors.tweetText))
@@ -111,7 +143,7 @@ function clearMute(el) {
   el.querySelector(':scope > .xkm-placeholder')?.remove();
 }
 
-function addPlaceholder(el, rule, reason) {
+function addPlaceholder(el, rule, reason, matchKey) {
   if (el.querySelector(':scope > .xkm-placeholder')) return;
 
   const placeholder = document.createElement('div');
@@ -128,7 +160,14 @@ function addPlaceholder(el, rule, reason) {
   reveal.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
-    el.classList.remove('xkm-collapsed');
+    event.stopImmediatePropagation();
+
+    if (matchKey) {
+      el.setAttribute('data-xkm-revealed-key', matchKey);
+    }
+
+    el.classList.remove('xkm-hidden', 'xkm-collapsed');
+    el.removeAttribute('data-xkm-reason');
     placeholder.remove();
   });
 
@@ -136,7 +175,7 @@ function addPlaceholder(el, rule, reason) {
   el.prepend(placeholder);
 }
 
-function applyMute(el, rule, reason) {
+function applyMute(el, rule, reason, matchKey) {
   clearMute(el);
   el.setAttribute('data-xkm-reason', reason);
 
@@ -144,7 +183,7 @@ function applyMute(el, rule, reason) {
     el.classList.add('xkm-hidden');
   } else {
     el.classList.add('xkm-collapsed');
-    addPlaceholder(el, rule, reason);
+    addPlaceholder(el, rule, reason, matchKey);
   }
 }
 
@@ -152,13 +191,21 @@ function processTweet(tweet) {
   if (!(tweet instanceof Element)) return;
   clearMute(tweet);
 
-  if (!settings.surfaces.tweets && !settings.surfaces.usernames) return;
+  if (!settings.surfaces.tweets && !settings.surfaces.usernames) {
+    tweet.removeAttribute('data-xkm-revealed-key');
+    return;
+  }
 
   if (settings.surfaces.usernames) {
     const userText = getTweetUserText(tweet);
     const userRule = matchingRule(userText, 'username');
+
     if (userRule) {
-      applyMute(tweet, userRule, '사용자명');
+      const key = revealKey(userRule, 'username', userText);
+
+      if (isManuallyRevealed(tweet, key)) return;
+
+      applyMute(tweet, userRule, '사용자명', key);
       return;
     }
   }
@@ -166,25 +213,56 @@ function processTweet(tweet) {
   if (settings.surfaces.tweets) {
     const text = getTweetText(tweet);
     const textRule = matchingRule(text, 'text');
+
     if (textRule) {
-      applyMute(tweet, textRule, '게시물');
+      const key = revealKey(textRule, 'text', text);
+
+      if (isManuallyRevealed(tweet, key)) return;
+
+      applyMute(tweet, textRule, '게시물', key);
       return;
     }
   }
+
+  tweet.removeAttribute('data-xkm-revealed-key');
 }
 
 function processUserCell(cell) {
   if (!settings.surfaces.profiles || !(cell instanceof Element)) return;
+
   clearMute(cell);
-  const rule = matchingRule(getText(cell), 'username') || matchingRule(getText(cell), 'text');
-  if (rule) applyMute(cell, rule, '프로필/사용자');
+  const text = getText(cell);
+  const rule = matchingRule(text, 'username') || matchingRule(text, 'text');
+
+  if (rule) {
+    const key = revealKey(rule, 'user-cell', text);
+
+    if (isManuallyRevealed(cell, key)) return;
+
+    applyMute(cell, rule, '프로필/사용자', key);
+    return;
+  }
+
+  cell.removeAttribute('data-xkm-revealed-key');
 }
 
 function processTrend(trend) {
   if (!settings.surfaces.trends || !(trend instanceof Element)) return;
+
   clearMute(trend);
-  const rule = matchingRule(getText(trend), 'text');
-  if (rule) applyMute(trend, rule, '트렌드');
+  const text = getText(trend);
+  const rule = matchingRule(text, 'text');
+
+  if (rule) {
+    const key = revealKey(rule, 'trend', text);
+
+    if (isManuallyRevealed(trend, key)) return;
+
+    applyMute(trend, rule, '트렌드', key);
+    return;
+  }
+
+  trend.removeAttribute('data-xkm-revealed-key');
 }
 
 function processProfileBio() {

@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
 };
 
 let settings = structuredClone(DEFAULT_SETTINGS);
+let editingRuleId = null;
 
 const $ = (id) => document.getElementById(id);
 const ruleValue = $('ruleValue');
@@ -20,6 +21,10 @@ const ruleList = $('ruleList');
 const emptyState = $('emptyState');
 const ruleCount = $('ruleCount');
 const status = $('status');
+const addRuleButton = $('addRule');
+const cancelEditButton = $('cancelEdit');
+const editNotice = $('editNotice');
+const modeHint = $('modeHint');
 
 const MODE_LABELS = {
   aggressive: '우회 표기 포함',
@@ -33,6 +38,17 @@ const TARGET_LABELS = {
   username: '사용자명',
   all: '내용 + 사용자명'
 };
+
+const MODE_DESCRIPTIONS = {
+  aggressive: '공백·구두점·기호·제로폭 문자를 제거한 뒤 비교합니다. 예: “고양이” 등록 시 “고 양 이”, “고.양.이”도 뮤트됩니다.',
+  contains: '입력한 글자가 원문에 연속해서 포함되어 있으면 뮤트합니다. 예: “스포” 등록 시 “스포주의”, “영화스포”가 뮤트됩니다.',
+  exact: '검사 대상 전체가 입력한 내용과 정확히 같을 때만 뮤트합니다. 예: “고양이”는 뮤트하지만 “고양이 사진”은 뮤트하지 않습니다.',
+  regex: '정규식을 직접 사용해 원하는 패턴을 지정합니다. 예: “고[\\s._-]*양[\\s._-]*이”처럼 우회 표기를 세밀하게 지정할 수 있습니다.'
+};
+
+function updateModeHint() {
+  modeHint.textContent = MODE_DESCRIPTIONS[ruleMode.value] || '';
+}
 
 function uid() {
   return `${Date.now()}-${crypto.getRandomValues(new Uint32Array(1))[0]}`;
@@ -80,19 +96,52 @@ function renderRules() {
 
     main.append(value, meta);
 
+    const buttons = document.createElement('div');
+    buttons.className = 'rule-buttons';
+
+    const edit = document.createElement('button');
+    edit.className = 'edit';
+    edit.textContent = '수정';
+    edit.addEventListener('click', () => {
+      editingRuleId = rule.id;
+      ruleValue.value = rule.value;
+      ruleMode.value = rule.mode || 'aggressive';
+      updateModeHint();
+      ruleTarget.value = rule.target || 'text';
+      addRuleButton.textContent = '수정 저장';
+      cancelEditButton.hidden = false;
+      editNotice.hidden = false;
+      ruleValue.focus();
+      ruleValue.select();
+      showStatus('수정할 내용을 변경한 뒤 저장해 주세요.');
+    });
+
     const del = document.createElement('button');
     del.className = 'delete';
     del.textContent = '삭제';
     del.addEventListener('click', async () => {
       settings.rules = settings.rules.filter(x => x.id !== rule.id);
+      if (editingRuleId === rule.id) resetEditor();
       await save();
       renderRules();
       showStatus('삭제했습니다.');
     });
 
-    row.append(enabled, main, del);
+    buttons.append(edit, del);
+    row.append(enabled, main, buttons);
     ruleList.append(row);
   });
+}
+
+function resetEditor() {
+  editingRuleId = null;
+  ruleValue.value = '';
+  ruleMode.value = 'aggressive';
+  updateModeHint();
+  ruleTarget.value = 'text';
+  addRuleButton.textContent = '추가';
+  cancelEditButton.hidden = true;
+  editNotice.hidden = true;
 }
 
 function syncControls() {
@@ -132,7 +181,7 @@ async function load() {
   syncControls();
 }
 
-$('addRule').addEventListener('click', async () => {
+addRuleButton.addEventListener('click', async () => {
   const value = ruleValue.value.trim();
   if (!value) {
     showStatus('단어를 입력해 주세요.');
@@ -148,6 +197,24 @@ $('addRule').addEventListener('click', async () => {
     }
   }
 
+  if (editingRuleId) {
+    const rule = settings.rules.find(x => x.id === editingRuleId);
+    if (!rule) {
+      resetEditor();
+      showStatus('수정할 규칙을 찾을 수 없습니다.');
+      return;
+    }
+
+    rule.value = value;
+    rule.mode = ruleMode.value;
+    rule.target = ruleTarget.value;
+    await save();
+    resetEditor();
+    renderRules();
+    showStatus('수정했습니다.');
+    return;
+  }
+
   settings.rules.unshift({
     id: uid(),
     value,
@@ -157,13 +224,20 @@ $('addRule').addEventListener('click', async () => {
   });
 
   await save();
-  ruleValue.value = '';
+  resetEditor();
   renderRules();
   showStatus('추가했습니다.');
 });
 
+cancelEditButton.addEventListener('click', () => {
+  resetEditor();
+  showStatus('수정을 취소했습니다.');
+});
+
+ruleMode.addEventListener('change', updateModeHint);
+
 ruleValue.addEventListener('keydown', event => {
-  if (event.key === 'Enter') $('addRule').click();
+  if (event.key === 'Enter') addRuleButton.click();
 });
 
 document.querySelectorAll('input[name="hideMode"]').forEach(input => {
@@ -246,4 +320,5 @@ $('importFile').addEventListener('change', async event => {
   }
 });
 
+updateModeHint();
 load();

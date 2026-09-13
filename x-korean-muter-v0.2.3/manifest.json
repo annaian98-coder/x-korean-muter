@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "X Korean Word Muter",
-  "version": "0.2.0",
+  "version": "0.2.3",
   "description": "X에서 한글 우회 표기를 포함한 뮤트 단어, 사용자명, 검색/트렌드 등을 필터링합니다.",
   "permissions": [
     "storage",

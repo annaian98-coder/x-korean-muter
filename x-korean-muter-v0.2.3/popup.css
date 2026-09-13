@@ -59,7 +59,7 @@ input[type="text"], select {
 
 .row {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr 1fr minmax(76px, auto);
   gap: 6px;
   margin-top: 7px;
 }
@@ -121,7 +121,34 @@ button.primary {
   font-weight: 650;
 }
 .rule-meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.rule-buttons {
+  display: flex;
+  gap: 5px;
+}
+.rule-buttons button {
+  min-height: 30px;
+  padding: 4px 8px;
+}
+.edit { color: var(--text); }
 .delete { color: var(--danger); }
+.rule-form-actions {
+  display: flex;
+  gap: 5px;
+}
+.rule-form-actions button {
+  flex: 1 1 auto;
+}
+.secondary {
+  background: transparent;
+}
+.edit-notice {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 650;
+}
 .empty { padding: 12px 0 3px; color: var(--muted); text-align: center; }
 
 .settings {
