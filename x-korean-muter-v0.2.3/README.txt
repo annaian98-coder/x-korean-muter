@@ -1,4 +1,4 @@
-﻿X Korean Word Muter v0.2.2
+﻿X Korean Word Muter v0.2.3
 ============================
 
 설치 / 업데이트
